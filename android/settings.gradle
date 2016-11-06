@@ -1,0 +1,3 @@
+rootProject.name = 'TestAuth0'
+
+include ':app'
