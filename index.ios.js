@@ -9,23 +9,54 @@ import {
   AppRegistry,
   StyleSheet,
   Text,
-  View
+  View,
+  TouchableOpacity
 } from 'react-native';
+var Auth0Lock = require('react-native-lock');
+var lock = new Auth0Lock({clientId: 'QEPHvV5T4gt47udbPC0Qb9e8GpVT0bx4', domain: '4ian.eu.auth0.com'});
 
 export default class TestAuth0 extends Component {
+  constructor() {
+    super();
+    this.state = {};
+  }
+
+  login() {
+    lock.show({}, (err, profile, token) => {
+      if (err) {
+        console.log(err);
+        return;
+      }
+
+      console.log(token);
+      // Authentication worked!
+      this.setState({
+        profile,
+        token,
+      });
+    });
+  }
+
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>
-          Welcome to React Native!
-        </Text>
-        <Text style={styles.instructions}>
-          To get started, edit index.ios.js
-        </Text>
+        {
+          this.state.profile && (
+            <View>
+              <Text style={styles.welcome}>Welcome {this.state.profile.name}</Text>
+              <Text>Your email is: {this.state.profile.email}</Text>
+            </View>
+          )
+        }
         <Text style={styles.instructions}>
           Press Cmd+R to reload,{'\n'}
           Cmd+D or shake for dev menu
         </Text>
+        <TouchableOpacity onPress={() => this.login()}>
+          <Text>
+            Login
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
