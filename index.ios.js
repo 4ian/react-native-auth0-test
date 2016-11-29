@@ -12,8 +12,17 @@ import {
   View,
   TouchableOpacity
 } from 'react-native';
-var Auth0Lock = require('react-native-lock');
-var lock = new Auth0Lock({clientId: 'QEPHvV5T4gt47udbPC0Qb9e8GpVT0bx4', domain: '4ian.eu.auth0.com'});
+
+import Messages from './messages'
+import Users from './users'
+
+import Auth0Lock from 'react-native-lock';
+const lock = new Auth0Lock({
+  clientId: 'QEPHvV5T4gt47udbPC0Qb9e8GpVT0bx4',
+  domain: '4ian.eu.auth0.com',
+  closable: true,
+});
+const serverBaseUrl = 'http://localhost:3000';
 
 export default class TestAuth0 extends Component {
   constructor() {
@@ -22,19 +31,69 @@ export default class TestAuth0 extends Component {
   }
 
   login() {
-    lock.show({}, (err, profile, token) => {
+    lock.show({}, (err, profile, auth0Token) => {
       if (err) {
         console.log(err);
         return;
       }
 
-      console.log(token);
-      // Authentication worked!
       this.setState({
         profile,
-        token,
+        token: auth0Token.idToken,
+      }, () => {
+        fetch(serverBaseUrl + '/users', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': this.state.token,
+          },
+          body: JSON.stringify({})
+        })
+        .then((response) => response.json())
+        .then(this.fetchMyMessages)
+        .then(this.fetchAllUsers);
       });
     });
+  }
+
+  fetchMyMessages = () => {
+    return fetch(serverBaseUrl + '/user/me/messages', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': this.state.token,
+      },
+    })
+    .then((response) => response.json())
+    .then((responseJson) => {
+      this.setState({
+        messages: responseJson,
+      })
+    });
+  }
+
+  fetchAllUsers = () => {
+    return fetch(serverBaseUrl + '/users', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': this.state.token,
+      },
+    })
+    .then((response) => response.json())
+    .then((responseJson) => {
+      this.setState({
+        users: responseJson,
+      })
+    });
+  }
+
+  refresh = () => {
+    return this.fetchMyMessages()
+      .then(this.fetchAllUsers);
   }
 
   render() {
@@ -48,13 +107,24 @@ export default class TestAuth0 extends Component {
             </View>
           )
         }
-        <Text style={styles.instructions}>
-          Press Cmd+R to reload,{'\n'}
-          Cmd+D or shake for dev menu
-        </Text>
+        {
+          this.state.messages && (
+            <Messages messages={this.state.messages}></Messages>
+          )
+        }
+        {
+          this.state.users && (
+            <Users users={this.state.users}></Users>
+          )
+        }
         <TouchableOpacity onPress={() => this.login()}>
           <Text>
             Login
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => this.refresh()}>
+          <Text>
+            Refresh
           </Text>
         </TouchableOpacity>
       </View>
@@ -64,8 +134,8 @@ export default class TestAuth0 extends Component {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 75,
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
   },
